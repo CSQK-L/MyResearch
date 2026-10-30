@@ -59,6 +59,9 @@ except ImportError:
         logger.warning("GitPython not installed. `pip install gitpython` to use prompt tracer.")
 
 model_to_prompt_size = {
+    # Conservative Khoj prompt budgets, not provider context limits.
+    "deepseek-flash": 60000,
+    "deepseek-v4-pro": 60000,
     # OpenAI Models
     "gpt-4o": 60000,
     "gpt-4o-mini": 60000,

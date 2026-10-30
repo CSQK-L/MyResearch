@@ -99,7 +99,7 @@ class PdfToEntries(TextToEntries):
             # Create temp file with .pdf extension that gets auto-deleted
             with tempfile.NamedTemporaryFile(suffix=".pdf", delete=True) as tmpf:
                 tmpf.write(pdf_file)
-                tmpf.flush()  # Ensure all data is written
+                tmpf.flush()  # 确保 Python 文件对象中缓冲的 PDF 数据已经刷新到操作系统，使后续通过文件路径读取的解析器能够看到这些数据
 
                 # Load the content using PyMuPDFLoader
                 loader = PyMuPDFLoader(tmpf.name)

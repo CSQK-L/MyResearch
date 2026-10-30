@@ -1,0 +1,425 @@
+index,prompt,ground_truth,agent_response,evaluation_decision,evaluation_explanation,reasoning_type,usage,references
+14,"/default As of 2024, what is the street address of the headquarters of the American online video sharing platform that was launched in the same year as the founding of the Vancouver Cherry Blossom festival?",530,"The platform is **YouTube** — launched in 2005, the same year the Vancouver Cherry Blossom Festival was founded (2005).
+
+As of 2024, YouTube's headquarters address is:
+
+**901 Cherry Avenue, San Bruno, California 94066, USA**",0.0,"Information Retrieval F1 Score: 0.00% Recall: 0.00%, Precision: 100.00%.
+0 of 2 correct from 0 total retrievals for 530.
+Queries:
+[]
+
+Expected Articles for 530:
+- https://en.wikipedia.org/wiki/Vancouver_Cherry_Blossom_Festival
+- https://en.wikipedia.org/wiki/YouTube
+
+Retrieved Articles for 530:
+[]
+
+",Multiple constraints,"{'input_tokens': 1012, 'output_tokens': 56, 'thought_tokens': 0, 'cache_read_tokens': 128, 'cache_write_tokens': 0, 'cost': 0.0}","{'inferredQueries': [], 'context': [], 'onlineContext': {}, 'codeContext': {}}"
+2,"/default Tell me the names of the two famous people I'm thinking of by using the following clues:  They both have the initials M.T. Both were known by nicknames that included the word ""Iron"" One became the world champion in his sport while the other was her country's political leader",204,"The two people you're thinking of are:
+
+- **""Iron"" Mike Tyson** — M.T., world heavyweight champion in boxing.
+- **""Iron Lady"" Margaret Thatcher** — M.T., Prime Minister of the United Kingdom.
+
+Both share the initials M.T., both were nicknamed with ""Iron,"" and one was a world champion in his sport while the other was her country's political leader.",0.0,"Information Retrieval F1 Score: 0.00% Recall: 0.00%, Precision: 100.00%.
+0 of 2 correct from 0 total retrievals for 204.
+Queries:
+[]
+
+Expected Articles for 204:
+- https://en.wikipedia.org/wiki/Margaret_Thatcher
+- https://en.wikipedia.org/wiki/Mike_Tyson
+
+Retrieved Articles for 204:
+[]
+
+",Multiple constraints | Temporal reasoning,"{'input_tokens': 1481, 'output_tokens': 81, 'thought_tokens': 0, 'cache_read_tokens': 128, 'cache_write_tokens': 0, 'cost': 0.0}","{'inferredQueries': [], 'context': [], 'onlineContext': {}, 'codeContext': {}}"
+8,"/default Tell me the name of the place I am thinking of based on these clues:  - I am a metropolitan borough in the West Midlands, UK - I am not a city - My boroughs name does not relate to a town",734,"The place you're thinking of is **Sandwell** — a metropolitan borough in the West Midlands that is not a city, and its name doesn't correspond to any town (it was coined from ""Sandwell Priory""/the Sandwell Valley rather than from a settlement). [1](https://en.wikipedia.org/wiki/Sandwell)
+
+A couple of other West Midlands boroughs also fit parts of the clue, but Sandwell is the cleanest match: **Solihull** is also a non-city metropolitan borough, but ""Solihull"" *is* a town, so it fails the last condition. **Dudley**, **Walsall**, and **Wolverhampton** all take their names from towns (and Wolverhampton is a city). **Coventry** is a city too.
+
+So: **Sandwell**.",0.0,"Information Retrieval F1 Score: 0.00% Recall: 0.00%, Precision: 100.00%.
+0 of 8 correct from 0 total retrievals for 734.
+Queries:
+[]
+
+Expected Articles for 734:
+- https://en.wikipedia.org/wiki/Birmingham
+- https://en.wikipedia.org/wiki/Coventry
+- https://en.wikipedia.org/wiki/Metropolitan_Borough_of_Dudley
+- https://en.wikipedia.org/wiki/Metropolitan_Borough_of_Solihull
+- https://en.wikipedia.org/wiki/Metropolitan_Borough_of_Walsall
+- https://en.wikipedia.org/wiki/Sandwell
+- https://en.wikipedia.org/wiki/West_Midlands_(county)
+- https://en.wikipedia.org/wiki/Wolverhampton
+
+Retrieved Articles for 734:
+[]
+
+",Multiple constraints,"{'input_tokens': 1553, 'output_tokens': 172, 'thought_tokens': 0, 'cache_read_tokens': 128, 'cache_write_tokens': 0, 'cost': 0.0}","{'inferredQueries': [], 'context': [], 'onlineContext': {}, 'codeContext': {}}"
+18,"/default As of August 1, 2024, are there any cities in England that are more populated than Philadelphia, and which cities are they?",83,"As of August 1, 2024, **no city in England was more populous than Philadelphia**.
+
+Philadelphia's population was roughly **1.55 million** (2020 census: ~1.60 million; 2023 estimates around 1.55 million). The largest city in England, **London**, is far bigger (~8.9 million), but London is typically counted as a *region* rather than a single city for these comparisons. Among England's actual cities, none besides London approaches Philadelphia's size:
+
+- **London** — ~8.9 million (but a region, not a single city)
+- **Birmingham** — ~1.14 million
+- **Manchester** — ~550,000
+- **Leeds** — ~790,000 (city proper)
+- **Liverpool** — ~500,000
+- **Sheffield** — ~580,000
+- **Bristol** — ~470,000
+
+So the only English entity larger than Philadelphia is **London** — and whether that counts depends on how you define ""city."" If London counts, it's the sole answer; if you restrict to cities proper (excluding Greater London as a region), **none** exceed Philadelphia.",0.0,"Information Retrieval F1 Score: 0.00% Recall: 0.00%, Precision: 100.00%.
+0 of 2 correct from 0 total retrievals for 83.
+Queries:
+[]
+
+Expected Articles for 83:
+- https://en.wikipedia.org/wiki/List_of_ONS_built-up_areas_in_England_by_population
+- https://en.wikipedia.org/wiki/Philadelphia
+
+Retrieved Articles for 83:
+[]
+
+",Numerical reasoning,"{'input_tokens': 1045, 'output_tokens': 249, 'thought_tokens': 0, 'cache_read_tokens': 128, 'cache_write_tokens': 0, 'cost': 0.0}","{'inferredQueries': [], 'context': [], 'onlineContext': {}, 'codeContext': {}}"
+6,/default The Sikh empire's capital at the time of the Battle of Sobraon came under the rule of the British Crown in what year?,250,"The Sikh Empire's capital at the time of the Battle of Sobraon (fought February 1846) was **Lahore**. Lahore came under the rule of the British Crown in **1849**, following the Second Anglo-Sikh War and the annexation of the Punjab (the Battle of Sobraon itself ended the First Anglo-Sikh War, after which Lahore remained under a British resident rather than direct Crown rule).",0.0,"Information Retrieval F1 Score: 0.00% Recall: 0.00%, Precision: 100.00%.
+0 of 3 correct from 0 total retrievals for 250.
+Queries:
+[]
+
+Expected Articles for 250:
+- https://en.wikipedia.org/wiki/Battle_of_Sobraon
+- https://en.wikipedia.org/wiki/Lahore
+- https://en.wikipedia.org/wiki/Punjab_Province_(British_India)
+
+Retrieved Articles for 250:
+[]
+
+",Temporal reasoning,"{'input_tokens': 1049, 'output_tokens': 87, 'thought_tokens': 0, 'cache_read_tokens': 128, 'cache_write_tokens': 0, 'cost': 0.0}","{'inferredQueries': [], 'context': [], 'onlineContext': {}, 'codeContext': {}}"
+16,"/default Who was older, the guitar player for the Dugites from 1982-1983 or the lead singer of The Sports?",100,"The Dugites were a Perth band, and their guitarist from 1982–1983 was **Lynette ""Lyn"" Beaton**... actually, let me be careful here — the Dugites' lineup around that period included guitarist **Peter Crosbie**, who joined in the early '80s. Hmm, I'm not fully certain of the exact 1982–83 guitarist without checking.
+
+For The Sports, the lead singer was **Stephen Cummings**, born **1954**.
+
+If the Dugites guitarist in question is Peter Crosbie (born 1957), then **Stephen Cummings would be older**.
+
+I'd want to verify the specific Dugites guitarist before giving you a firm answer — do you have a name in mind, or should I look it up?",0.0,"Information Retrieval F1 Score: 0.00% Recall: 0.00%, Precision: 100.00%.
+0 of 3 correct from 0 total retrievals for 100.
+Queries:
+[]
+
+Expected Articles for 100:
+- https://en.wikipedia.org/wiki/Andrew_Pendlebury
+- https://en.wikipedia.org/wiki/Stephen_Cummings
+- https://en.wikipedia.org/wiki/The_Dugites
+
+Retrieved Articles for 100:
+[]
+
+",Numerical reasoning | Multiple constraints,"{'input_tokens': 998, 'output_tokens': 157, 'thought_tokens': 0, 'cache_read_tokens': 128, 'cache_write_tokens': 0, 'cost': 0.0}","{'inferredQueries': [], 'context': [], 'onlineContext': {}, 'codeContext': {}}"
+10,/default A 2002 science fiction novel by an American author references La Llorona and themes of personal identity. What is the name of the trilogy that this author wrote under the same publisher?,815,"The novel is **The House of the Scorpion** (2002) by **Nancy Farmer** — it references La Llorona and deals heavily with cloning and personal identity.
+
+The trilogy she wrote under the same publisher (Atheneum/Simon & Schuster) is the **Sea of Trolls trilogy** (also called the *Sea of Trolls* series):
+
+1. *The Sea of Trolls* (2004)
+2. *The Land of the Silver Apples* (2007)
+3. *The Islands of the Blessed* (2009)",0.0,"Information Retrieval F1 Score: 0.00% Recall: 0.00%, Precision: 100.00%.
+0 of 3 correct from 0 total retrievals for 815.
+Queries:
+[]
+
+Expected Articles for 815:
+- https://en.wikipedia.org/wiki/La_Llorona
+- https://en.wikipedia.org/wiki/Nancy_Farmer
+- https://en.wikipedia.org/wiki/The_House_of_the_Scorpion
+
+Retrieved Articles for 815:
+[]
+
+",Tabular reasoning | Multiple constraints,"{'input_tokens': 1096, 'output_tokens': 114, 'thought_tokens': 0, 'cache_read_tokens': 128, 'cache_write_tokens': 0, 'cost': 0.0}","{'inferredQueries': [], 'context': [], 'onlineContext': {}, 'codeContext': {}}"
+0,/default I am the narrator character in the final novel written by the recipient of the 1963 Hugo Award for Best Novel. Who am I?,281,"Let me work through this one.
+
+The 1963 Hugo Award for Best Novel went to **Philip K. Dick** for *The Man in the High Castle*.
+
+Dick's final novel (published posthumously in 1985) was ***Radio Free Albemuth***. Its narrator is **Nicholas Brady**, a record store owner and friend of the protagonist, science fiction writer **Phil** (a stand-in for Dick himself).
+
+So the answer is **Nicholas Brady** — the narrator of *Radio Free Albemuth*.",0.0,"Information Retrieval F1 Score: 0.00% Recall: 0.00%, Precision: 100.00%.
+0 of 3 correct from 0 total retrievals for 281.
+Queries:
+[]
+
+Expected Articles for 281:
+- https://en.wikipedia.org/wiki/Hugo_Award_for_Best_Novel
+- https://en.wikipedia.org/wiki/Philip_K._Dick
+- https://en.wikipedia.org/wiki/The_Transmigration_of_Timothy_Archer
+
+Retrieved Articles for 281:
+[]
+
+",Tabular reasoning | Multiple constraints,"{'input_tokens': 1116, 'output_tokens': 109, 'thought_tokens': 0, 'cache_read_tokens': 128, 'cache_write_tokens': 0, 'cost': 0.0}","{'inferredQueries': [], 'context': [], 'onlineContext': {}, 'codeContext': {}}"
+4,"/default Using only the Winter and Summer Olympic events that occurred in the same country in the same year, which year had the most total combined women competing in the olympics?",782,"This is a fun one, and it hinges on a premise that turns out to be a trick: **no year has ever had both a Winter and Summer Olympics in the same country.**
+
+The IOC has never awarded both Games to the same country in the same year. The closest historical cases:
+
+- **1924** — Winter Olympics debuted in Chamonix, *France*; Summer Games were in Paris, *France*. Same country, same year — but this is the only pairing that genuinely fits, since the Winter Games were designated retroactively as the first Winter Olympics.
+- **1936** — Winter in Garmisch-Partenkirchen and Summer in Berlin, both *Germany*. Also same country, same year.
+- **1992** — Winter in Albertville and Summer in Barcelona, both *France*... no, both *France*? Winter was France, Summer was Spain. Doesn't fit.
+- **1994 onward** — the IOC shifted the Winter Games to the off-year, permanently eliminating any possibility of a same-year, same-country pairing.
+
+So the real candidates are **1924 (France)** and **1936 (Germany)**.
+
+**Women's participation:**
+
+| Year | Winter women | Summer women | Total |
+|------|-------------|--------------|-------|
+| 1924 | 11 (Chamonix) | 135 (Paris) | **146** |
+| 1936 | 17 (Garmisch) | 328 (Berlin) | **345** |
+
+**1936 is the answer — roughly 345 women combined**, driven overwhelmingly by the Berlin Summer Games, where women competed in far more events than in 1924.
+
+One caveat worth flagging: if you intended ""same country"" more loosely (e.g., counting only *host* nations, or allowing the 1992 France/Spain near-miss), the answer changes. But under the strict reading — same country, same year, both Games actually held — **1936** wins, and it's not close.",0.0,"Information Retrieval F1 Score: 0.00% Recall: 0.00%, Precision: 100.00%.
+0 of 6 correct from 0 total retrievals for 782.
+Queries:
+[]
+
+Expected Articles for 782:
+- https://en.wikipedia.org/wiki/1932_Summer_Olympics
+- https://en.wikipedia.org/wiki/1932_Winter_Olympics
+- https://en.wikipedia.org/wiki/1936_Summer_Olympics
+- https://en.wikipedia.org/wiki/1936_Winter_Olympics
+- https://en.wikipedia.org/wiki/Summer_Olympic_Games
+- https://en.wikipedia.org/wiki/Winter_Olympic_Games
+
+Retrieved Articles for 782:
+[]
+
+",Numerical reasoning | Multiple constraints | Temporal reasoning,"{'input_tokens': 1197, 'output_tokens': 413, 'thought_tokens': 0, 'cache_read_tokens': 128, 'cache_write_tokens': 0, 'cost': 0.0}","{'inferredQueries': [], 'context': [], 'onlineContext': {}, 'codeContext': {}}"
+12,/default The founder of the production company at which Tim Allsop and Stewart Williams met received a bachelor's degree from a college in the state of New York. In what year was this college's sibling institution founded?,66,"Let me work through this chain.
+
+**Step 1 — The production company.** Tim Allsop and Stewart Williams met while working at **Working Title Films**.
+
+**Step 2 — Its founder.** Working Title Films was founded by **Tim Bevan** (with Sarah Radclyffe).
+
+**Step 3 — Bevan's education.** Tim Bevan earned his bachelor's degree from **Dartmouth College** — which is in Hanover, **New Hampshire**, not New York.
+
+Hmm — that doesn't fit ""a college in the state of New York."" So the founder in question is more likely **Sarah Radclyffe**'s co-founder... but that's still Bevan. Let me reconsider: the co-founder often credited alongside Bevan is Sarah Radclyffe, but the college match points elsewhere.
+
+The college in New York that fits is **Dartmouth's sibling**? No — Dartmouth is in New Hampshire. The institution that is Dartmouth's ""sibling"" (founded by the same charter/eleemosynary grant, the ""Dartmouth College case"" aside) is **Moor's Indian Charity School**, not in New York.
+
+Let me reframe: the New York college whose **sibling institution** we want is likely **Columbia College** (Columbia University) — and its sibling is **King's College** (now Columbia)... circular again.
+
+The cleanest reading: Tim Bevan attended **Dartmouth College**; Dartmouth's sibling institution — founded the same year, 1769, under the same English charity-school model — is **Moor's Indian Charity School** (1754). That's not it either.
+
+Given the ambiguity, the most defensible answer: the college is **Dartmouth College** (New Hampshire), and its sibling institution, **Moor's Indian Charity School**, was founded in **1754**.
+
+If instead you mean a New York college proper, the answer changes — could you confirm which founder/college chain you have in mind?",0.0,"Information Retrieval F1 Score: 0.00% Recall: 0.00%, Precision: 100.00%.
+0 of 4 correct from 0 total retrievals for 66.
+Queries:
+[]
+
+Expected Articles for 66:
+- https://en.wikipedia.org/wiki/Elisabeth_Murdoch_(businesswoman)
+- https://en.wikipedia.org/wiki/Tim_Allsop_&_Stewart_Williams
+- https://en.wikipedia.org/wiki/Vassar_College
+- https://en.wikipedia.org/wiki/Yale_University
+
+Retrieved Articles for 66:
+[]
+
+",Multiple constraints,"{'input_tokens': 1115, 'output_tokens': 412, 'thought_tokens': 0, 'cache_read_tokens': 128, 'cache_write_tokens': 0, 'cost': 0.0}","{'inferredQueries': [], 'context': [], 'onlineContext': {}, 'codeContext': {}}"
+3,/default What two cities hosted the Summer Olympic Games between when the television shows featuring characters Olivia Benson and Meredith Grey started airing?,387,"The two shows are *Law & Order: SVU* (Olivia Benson) and *Grey's Anatomy* (Meredith Grey).
+
+- **Law & Order: SVU** premiered **September 20, 1999**
+- **Grey's Anatomy** premiered **March 27, 2005**
+
+So the Summer Olympics held in that window (between Sept 1999 and March 2005) were:
+
+1. **Sydney, Australia — 2000**
+2. **Athens, Greece — 2004**
+
+(Beijing 2008 falls after Grey's Anatomy premiered, and Atlanta 1996 predates SVU.)",0.0,"Information Retrieval F1 Score: 0.00% Recall: 0.00%, Precision: 100.00%.
+0 of 3 correct from 0 total retrievals for 387.
+Queries:
+[]
+
+Expected Articles for 387:
+- https://en.wikipedia.org/wiki/List_of_Olympic_Games_host_cities
+- https://en.wikipedia.org/wiki/Meredith_Grey
+- https://en.wikipedia.org/wiki/Olivia_Benson
+
+Retrieved Articles for 387:
+[]
+
+",Multiple constraints,"{'input_tokens': 1066, 'output_tokens': 135, 'thought_tokens': 0, 'cache_read_tokens': 896, 'cache_write_tokens': 0, 'cost': 0.0}","{'inferredQueries': [], 'context': [], 'onlineContext': {}, 'codeContext': {}}"
+15,/default What actor who starred in the People's Choice Award for Favorite Comedic Movie 1993 later became a U.S. President?,185,"The 1993 People's Choice Award for Favorite Comedic Movie went to **Sister Act** — and its star, **Whoopi Goldberg**, did not become U.S. President.
+
+So the premise is a trick: no actor from that film (or, more broadly, no one who starred in the 1993 Favorite Comedic Movie winner) later became a U.S. President. The closest real-world connection is that **Ronald Reagan**, a former actor, became president — but he was long out of films by 1993, and no actor from that year's winning comedy followed that path.
+
+If the intended answer was a different award category or year, let me know and I can dig further.",0.0,"Information Retrieval F1 Score: 0.00% Recall: 0.00%, Precision: 100.00%.
+0 of 3 correct from 0 total retrievals for 185.
+Queries:
+[]
+
+Expected Articles for 185:
+- https://en.wikipedia.org/wiki/19th_People%27s_Choice_Awards
+- https://en.wikipedia.org/wiki/Home_Alone_2:_Lost_in_New_York
+- https://en.wikipedia.org/wiki/List_of_presidents_of_the_United_States
+
+Retrieved Articles for 185:
+[]
+
+",Multiple constraints,"{'input_tokens': 962, 'output_tokens': 144, 'thought_tokens': 0, 'cache_read_tokens': 128, 'cache_write_tokens': 0, 'cost': 0.0}","{'inferredQueries': [], 'context': [], 'onlineContext': {}, 'codeContext': {}}"
+17,/default How many more wins did the team with the number one seed from the NBA Western Conference in the 2020-2021 season have than the team with the fifth seed from the NBA Western Conference in the 2019-2020 season?,700,"I need to identify the two teams and their win totals.
+
+**2020–21 Western Conference #1 seed:** Utah Jazz — they finished 52–20.
+
+**2019–20 Western Conference #5 seed:** Oklahoma City Thunder — they finished 44–28 (the 2019–20 season was shortened to 72 games due to COVID).
+
+So the difference is 52 − 44 = **8 more wins**.
+
+(If you'd rather compare by winning percentage — since the seasons had different lengths — Utah's .722 vs. OKC's .611 is about an 11-point gap, but by raw win count the answer is 8.)",0.0,"Information Retrieval F1 Score: 0.00% Recall: 0.00%, Precision: 100.00%.
+0 of 2 correct from 0 total retrievals for 700.
+Queries:
+[]
+
+Expected Articles for 700:
+- https://en.wikipedia.org/wiki/2019%E2%80%9320_NBA_season
+- https://en.wikipedia.org/wiki/2020%E2%80%9321_NBA_season
+
+Retrieved Articles for 700:
+[]
+
+",Numerical reasoning | Tabular reasoning,"{'input_tokens': 985, 'output_tokens': 134, 'thought_tokens': 0, 'cache_read_tokens': 768, 'cache_write_tokens': 0, 'cost': 0.0}","{'inferredQueries': [], 'context': [], 'onlineContext': {}, 'codeContext': {}}"
+7,"/default How many years before the founding of Google, was George Orwell's book ""1984"" published?",605,"George Orwell's *Nineteen Eighty-Four* was published on **8 June 1949**. Google was founded on **4 September 1998**.
+
+That's **49 years** (about 49 years and 3 months) before Google's founding.",0.0,"Information Retrieval F1 Score: 0.00% Recall: 0.00%, Precision: 100.00%.
+0 of 2 correct from 0 total retrievals for 605.
+Queries:
+[]
+
+Expected Articles for 605:
+- https://en.wikipedia.org/wiki/Google
+- https://en.wikipedia.org/wiki/Nineteen_Eighty-Four
+
+Retrieved Articles for 605:
+[]
+
+",Numerical reasoning | Tabular reasoning,"{'input_tokens': 1008, 'output_tokens': 51, 'thought_tokens': 0, 'cache_read_tokens': 768, 'cache_write_tokens': 0, 'cost': 0.0}","{'inferredQueries': [], 'context': [], 'onlineContext': {}, 'codeContext': {}}"
+19,"/default As of Aug 3, 2024, the artist who released the album ""Father of Asahd"" went to the same high school as an Olympic diver. How many Olympic teams did this diver participate on?",7,"Let me work through this step by step.
+
+**Step 1: ""Father of Asahd""** — that's DJ Khaled's 2019 album.
+
+**Step 2: DJ Khaled's high school** — he attended **Dr. Michael M. Krop Senior High School** in Miami, Florida.
+
+**Step 3: The Olympic diver from that school** — **Chris Colwill**, who competed in diving at the Olympics, attended Dr. Krop High School.
+
+**Step 4: How many Olympic teams did Chris Colwill compete on?** — He represented the **United States at two Olympic Games: Athens 2004 and Beijing 2008**.
+
+**Answer: 2 Olympic teams.**",0.0,"Information Retrieval F1 Score: 0.00% Recall: 0.00%, Precision: 100.00%.
+0 of 4 correct from 0 total retrievals for 7.
+Queries:
+[]
+
+Expected Articles for 7:
+- https://en.wikipedia.org/wiki/DJ_Khaled
+- https://en.wikipedia.org/wiki/Dr._Phillips_High_School
+- https://en.wikipedia.org/wiki/Father_of_Asahd
+- https://en.wikipedia.org/wiki/Mark_Ruiz
+
+Retrieved Articles for 7:
+[]
+
+",Multiple constraints | Temporal reasoning,"{'input_tokens': 980, 'output_tokens': 147, 'thought_tokens': 0, 'cache_read_tokens': 768, 'cache_write_tokens': 0, 'cost': 0.0}","{'inferredQueries': [], 'context': [], 'onlineContext': {}, 'codeContext': {}}"
+11,/default Who composed the Broadway musical that premiered in 2003 and starred the actress who would later voice Elsa in Disney's Frozen?,674,"The musical is **Wicked**, which premiered on Broadway in 2003 and starred **Idina Menzel** as Elphaba — she later voiced Elsa in Disney's *Frozen*. Its composer (and lyricist) was **Stephen Schwartz**.",0.0,"Information Retrieval F1 Score: 0.00% Recall: 0.00%, Precision: 100.00%.
+0 of 2 correct from 0 total retrievals for 674.
+Queries:
+[]
+
+Expected Articles for 674:
+- https://en.wikipedia.org/wiki/Idina_Menzel
+- https://en.wikipedia.org/wiki/Wicked_(musical)
+
+Retrieved Articles for 674:
+[]
+
+",Multiple constraints,"{'input_tokens': 1023, 'output_tokens': 53, 'thought_tokens': 0, 'cache_read_tokens': 768, 'cache_write_tokens': 0, 'cost': 0.0}","{'inferredQueries': [], 'context': [], 'onlineContext': {}, 'codeContext': {}}"
+1,"/default As of August 3, 2024, what is the capital of the country with the largest energy complex in South Eastern Europe?",509,"The country with the largest energy complex in South Eastern Europe is **Romania** — the **Cernavodă Nuclear Power Plant** on the Danube is often cited as the largest energy complex in the region (and Romania's largest single power producer). Its capital is **Bucharest**.
+
+So the answer is **Bucharest**.",0.0,"Information Retrieval F1 Score: 0.00% Recall: 0.00%, Precision: 100.00%.
+0 of 2 correct from 0 total retrievals for 509.
+Queries:
+[]
+
+Expected Articles for 509:
+- https://en.wikipedia.org/wiki/Bulgaria
+- https://en.wikipedia.org/wiki/Maritsa_Iztok_Complex
+
+Retrieved Articles for 509:
+[]
+
+",Multiple constraints,"{'input_tokens': 963, 'output_tokens': 68, 'thought_tokens': 0, 'cache_read_tokens': 768, 'cache_write_tokens': 0, 'cost': 0.0}","{'inferredQueries': [], 'context': [], 'onlineContext': {}, 'codeContext': {}}"
+9,/default Who was the Vice Admiral in charge of the Carrier Division the Japanese carrier Hiyō was in when she was sunk?,472,"The carrier *Hiyō* was sunk on 20 June 1944 during the Battle of the Philippine Sea, while serving in **Carrier Division 2** of the Japanese Mobile Fleet (1st Mobile Fleet). That division was commanded by **Rear Admiral Takaji Jōjima** (also rendered Jōshima), flying his flag aboard *Hiyō* herself. So the flag officer in charge of her division at the time of her loss was Rear Admiral Takaji Jōjima — not a Vice Admiral.
+
+If you're thinking of a Vice Admiral, the relevant one is one level up: **Vice Admiral Jisaburō Ozawa**, commander of the 1st Mobile Fleet, who directed the whole force (and whose flagship was the carrier *Taihō*, lost the same day).",0.0,"Information Retrieval F1 Score: 0.00% Recall: 0.00%, Precision: 100.00%.
+0 of 3 correct from 0 total retrievals for 472.
+Queries:
+[]
+
+Expected Articles for 472:
+- https://en.wikipedia.org/wiki/Battle_of_the_Philippine_Sea
+- ""https://en.wikipedia.org/wiki/Japanese_aircraft_carrier_Hiy\u014D""
+- https://en.wikipedia.org/wiki/Philippine_Sea_order_of_battle
+
+Retrieved Articles for 472:
+[]
+
+",Multiple constraints,"{'input_tokens': 1036, 'output_tokens': 168, 'thought_tokens': 0, 'cache_read_tokens': 896, 'cache_write_tokens': 0, 'cost': 0.0}","{'inferredQueries': [], 'context': [], 'onlineContext': {}, 'codeContext': {}}"
+5,"/default Among Aristotle, Alexander the Great, Socrates, and Plato, which of them taught the others? What was their order chronologically? ",581,"You're asking about the classic teacher-student chain in ancient Greek philosophy. Here's the relationship and chronological order:
+
+**Who taught whom:**
+- **Socrates** taught **Plato**
+- **Plato** taught **Aristotle**
+- **Aristotle** taught **Alexander the Great** (as his tutor)
+
+So the teaching chain runs: Socrates → Plato → Aristotle → Alexander the Great.
+
+**Chronological order (by birth):**
+1. **Socrates** — c. 470 BCE
+2. **Plato** — c. 428/427 BCE
+3. **Aristotle** — 384 BCE
+4. **Alexander the Great** — 356 BCE
+
+A nice detail: the chain spans three generations of philosophers plus one conqueror. Aristotle tutored the young Alexander in Macedon starting around 343 BCE, when Alexander was about 13. And notably, Socrates never wrote anything down — we know him largely through Plato's dialogues, which is why the two are so intertwined in the historical record.",0.0,"Information Retrieval F1 Score: 0.00% Recall: 0.00%, Precision: 100.00%.
+0 of 4 correct from 0 total retrievals for 581.
+Queries:
+[]
+
+Expected Articles for 581:
+- https://en.wikipedia.org/wiki/Alexander_the_Great
+- https://en.wikipedia.org/wiki/Aristotle
+- https://en.wikipedia.org/wiki/Plato
+- https://en.wikipedia.org/wiki/Socrates
+
+Retrieved Articles for 581:
+[]
+
+",Multiple constraints | Temporal reasoning,"{'input_tokens': 1021, 'output_tokens': 211, 'thought_tokens': 0, 'cache_read_tokens': 128, 'cache_write_tokens': 0, 'cost': 0.0}","{'inferredQueries': [], 'context': [], 'onlineContext': {}, 'codeContext': {}}"
+13,/default What Doctor Who episode aired on a date closest to the 441st launch of the Skylark rocket?,684,"I don't have a verified answer for this one — the 441st Skylark launch date isn't something I can pin down reliably, and without that anchor I can't identify the nearest Doctor Who episode.
+
+A couple of things worth flagging about the premise:
+
+- **Skylark numbering is messy.** The Skylark sounding rocket program (1957–1979, ~440+ launches from Woomera and elsewhere) had overlapping numbering schemes across its variants (Skylark 1 through Skylark 12, plus sub-variants), and published launch logs sometimes count suborbital tests, failures, or static firings inconsistently. So ""the 441st launch"" depends heavily on which catalogue you use.
+- **The total count is right at the boundary.** Depending on the source, the program's total is quoted as roughly 430–450 launches, so the 441st would land in the late 1970s — likely 1978–79.
+
+If you can tell me which launch log you're working from (e.g., a specific Wikipedia table, the RAE/Australian launch records, or Jonathan McDowell's log), I can work out the date and then match it against Doctor Who's broadcast calendar — though note that by the late 1970s the show was airing in autumn/winter seasons (e.g., the 1978 *Key to Time* season ran September–November), so the nearest episode would likely be a Tom Baker serial.",0.0,"Information Retrieval F1 Score: 0.00% Recall: 0.00%, Precision: 100.00%.
+0 of 2 correct from 0 total retrievals for 684.
+Queries:
+[]
+
+Expected Articles for 684:
+- https://en.wikipedia.org/wiki/Doctor_Who_series_1
+- https://en.wikipedia.org/wiki/Skylark_(rocket)
+
+Retrieved Articles for 684:
+[]
+
+",Tabular reasoning | Temporal reasoning,"{'input_tokens': 1028, 'output_tokens': 307, 'thought_tokens': 0, 'cache_read_tokens': 128, 'cache_write_tokens': 0, 'cost': 0.0}","{'inferredQueries': [], 'context': [], 'onlineContext': {}, 'codeContext': {}}"

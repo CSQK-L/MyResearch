@@ -6,7 +6,7 @@ import uuid
 from typing import List, Optional, Union
 
 import openai
-from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
 from fastapi.responses import Response
 from starlette.authentication import has_required_scope, requires
 
@@ -23,6 +23,8 @@ from khoj.routers.helpers import (
     get_user_config,
     update_telemetry_state,
 )
+from khoj.search_type.hybrid_search import RetrievalUnavailable
+from khoj.search_type.retrieval_types import RetrievalMode
 from khoj.utils import state
 from khoj.utils.rawconfig import SearchResponse
 from khoj.utils.state import SearchType
@@ -49,23 +51,28 @@ async def search(
     q: str,
     request: Request,
     common: CommonQueryParams,
-    n: Optional[int] = 5,
+    n: Optional[int] = Query(default=5, ge=1, le=1000),
     t: Optional[SearchType] = SearchType.All,
     r: Optional[bool] = False,
     max_distance: Optional[Union[float, None]] = None,
     dedupe: Optional[bool] = True,
+    mode: Optional[RetrievalMode] = None,
 ):
     user = request.user.object
 
-    results = await execute_search(
-        user=user,
-        q=q,
-        n=n,
-        t=t,
-        r=r,
-        max_distance=max_distance or math.inf,
-        dedupe=dedupe,
-    )
+    try:
+        results = await execute_search(
+            user=user,
+            q=q,
+            n=n,
+            t=t,
+            r=r,
+            max_distance=math.inf if max_distance is None else max_distance,
+            dedupe=dedupe,
+            mode=mode,
+        )
+    except RetrievalUnavailable as error:
+        raise HTTPException(status_code=503, detail=str(error)) from error
 
     update_telemetry_state(
         request=request,

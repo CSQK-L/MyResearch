@@ -1,0 +1,9 @@
+
+services:
+  database:
+    image: khoj-postgres-pgsearch:pg15-0.26.3
+
+    command:
+      - postgres
+      - -c
+      - shared_preload_libraries=pg_search

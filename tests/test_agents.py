@@ -150,7 +150,7 @@ async def test_agent_with_knowledge_base_and_search_not_creator_and_private(
 
 @pytest.mark.anyio
 @pytest.mark.django_db(transaction=True)
-async def test_agent_with_knowledge_base_and_search_not_creator_and_private_accessible_to_none(
+async def test_private_agent_only_search_requires_authorized_owner(
     default_user2: KhojUser, default_openai_chat_model_option: ChatModel, chat_client
 ):
     full_filename = get_absolute_path("tests/data/markdown/having_kids.markdown")
@@ -167,7 +167,8 @@ async def test_agent_with_knowledge_base_and_search_not_creator_and_private_acce
         [],
     )
 
-    search_result = await execute_search(user=None, q="having kids", agent=new_agent)
+    assert await execute_search(user=None, q="having kids", agent=new_agent) == []
+    search_result = await execute_search(user=None, q="having kids", agent=new_agent, authorization_user=default_user2)
 
     assert len(search_result) == 5
 

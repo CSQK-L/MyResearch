@@ -31,6 +31,7 @@ import requests
 from apscheduler.job import Job
 from apscheduler.triggers.cron import CronTrigger
 from asgiref.sync import sync_to_async
+from django.db import DatabaseError
 from django.utils import timezone as django_timezone
 from fastapi import Depends, Header, HTTPException, Request, UploadFile, WebSocket
 from langchain_core.messages.chat import ChatMessage
@@ -105,17 +106,15 @@ from khoj.processor.conversation.utils import (
     clean_mermaidjs,
     construct_chat_history,
     construct_question_history,
-    defilter_query,
     generate_chatml_messages_with_context,
     is_retryable_exception,
 )
 from khoj.processor.speech.text_to_speech import is_eleven_labs_enabled
 from khoj.routers.email import is_resend_enabled, send_task_email
 from khoj.routers.twilio import is_twilio_enabled
-from khoj.search_filter.date_filter import DateFilter
-from khoj.search_filter.file_filter import FileFilter
-from khoj.search_filter.word_filter import WordFilter
-from khoj.search_type import text_search
+from khoj.search_type import hybrid_search, text_search
+from khoj.search_type.retrieval_config import resolve_retrieval_mode, retrieval_query_filters, retrieval_query_text
+from khoj.search_type.retrieval_types import HybridOptions, RetrievalMode
 from khoj.utils import state
 from khoj.utils.helpers import (
     LRU,
@@ -139,7 +138,6 @@ from khoj.utils.rawconfig import (
     ChatRequestBody,
     FileData,
     LocationData,
-    SearchResponse,
 )
 from khoj.utils.state import SearchType
 from khoj.utils.yaml import yaml_dump
@@ -162,7 +160,10 @@ def validate_chat_model(user: KhojUser):
     if default_chat_model is None:
         raise HTTPException(status_code=500, detail="Contact the server administrator to add a chat model.")
 
-    if default_chat_model.model_type == "openai" and not default_chat_model.ai_model_api:
+    if (
+        default_chat_model.model_type in (ChatModel.ModelType.OPENAI, ChatModel.ModelType.DEEPSEEK)
+        and not default_chat_model.ai_model_api
+    ):
         raise HTTPException(status_code=500, detail="Contact the server administrator to add a chat model.")
 
 
@@ -177,6 +178,7 @@ async def is_ready_to_chat(user: KhojUser):
             user_chat_model.model_type
             in [
                 ChatModel.ModelType.OPENAI,
+                ChatModel.ModelType.DEEPSEEK,
                 ChatModel.ModelType.ANTHROPIC,
                 ChatModel.ModelType.GOOGLE,
             ]
@@ -420,8 +422,8 @@ async def aget_data_sources_and_output_format(
     agent_chat_model = AgentAdapters.get_agent_chat_model(agent, user) if agent else None
 
     class PickTools(BaseModel):
-        source: List[str] = Field(..., min_items=1)
-        output: str
+        source: List[str] = Field(..., min_length=1)
+        output: str = Field(..., min_length=1)
 
     with timer("Chat actor: Infer information sources to refer", logger):
         raw_response = await send_message_to_model_wrapper(
@@ -438,16 +440,11 @@ async def aget_data_sources_and_output_format(
         )
 
     try:
-        response = clean_json(raw_response.text)
-        response = json.loads(response)
-
-        chosen_sources = [s.strip() for s in response.get("source", []) if s.strip()]
-        chosen_output = response.get("output", "text").strip()  # Default to text output
-
-        if is_none_or_empty(chosen_sources) or not isinstance(chosen_sources, list):
-            raise ValueError(
-                f"Invalid response for determining relevant tools: {chosen_sources}. Raw Response: {response}"
-            )
+        if not isinstance(raw_response.text, str) or not raw_response.text.strip():
+            raise ValueError("Empty tool selection response")
+        response = PickTools.model_validate_json(clean_json(raw_response.text), strict=True)
+        chosen_sources = [s.strip() for s in response.source if s.strip()]
+        chosen_output = response.output.strip()
 
         output_mode = ConversationCommand.Text
         # Verify selected output mode is enabled for the agent, as the LLM can sometimes get confused by the tool options.
@@ -462,16 +459,16 @@ async def aget_data_sources_and_output_format(
             if chosen_source in source_options.keys() and (len(agent_sources) == 0 or chosen_source in agent_sources):
                 data_sources.append(ConversationCommand(chosen_source))
 
-        # Fallback to default sources if the inferred data sources are unset or invalid
+        # No valid source remains: avoid executing tools from an invalid selection.
         if is_none_or_empty(data_sources):
-            if len(agent_sources) == 0:
-                data_sources = [ConversationCommand.Default]
-            else:
-                data_sources = [ConversationCommand.General]
-    except Exception as e:
-        logger.error(f"Invalid response for determining relevant tools: {response}. Error: {e}", exc_info=True)
-        data_sources = agent_sources if len(agent_sources) > 0 else [ConversationCommand.Default]
-        output_mode = agent_outputs[0] if len(agent_outputs) > 0 else ConversationCommand.Text
+            data_sources = [ConversationCommand.General]
+            output_mode = ConversationCommand.Text
+    except (ValueError, TypeError) as e:
+        # Validation exceptions can contain model output. Log only the error type,
+        # and keep API errors outside this parsing block so they still propagate.
+        logger.warning("Invalid tool selection response (%s); using general text chat.", type(e).__name__)
+        data_sources = [ConversationCommand.General]
+        output_mode = ConversationCommand.Text
 
     return {"sources": data_sources, "output": output_mode}
 
@@ -1325,8 +1322,8 @@ async def search_documents(
             return
 
     # Extract filter terms from user message
-    defiltered_query = defilter_query(q)
-    filters_in_query = q.replace(defiltered_query, "").strip()
+    defiltered_query = retrieval_query_text(q)
+    filters_in_query = retrieval_query_filters(q)
     conversation = await sync_to_async(ConversationAdapters.get_conversation_by_id)(conversation_id)
 
     if not conversation:
@@ -1334,7 +1331,7 @@ async def search_documents(
         yield compiled_references, inferred_queries, defiltered_query
         return
 
-    filters_in_query += " ".join([f'file:"{filter}"' for filter in conversation.file_filters])
+    filters_in_query += " " + " ".join([f'file:"{filter}"' for filter in conversation.file_filters])
     if is_none_or_empty(filters_in_query):
         logger.debug(f"Filters in query: {filters_in_query}")
 
@@ -1357,7 +1354,8 @@ async def search_documents(
         )
 
     # Collate search results as context for the LLM
-    inferred_queries = list(set(inferred_queries) - previous_inferred_queries)
+    inferred_queries = [query for query in dict.fromkeys(inferred_queries) if query not in previous_inferred_queries]
+    retrieval_mode = resolve_retrieval_mode()
     with timer("Searching knowledge base took", logger):
         search_results = []
         logger.info(f"🔍 Searching knowledge base with queries: {inferred_queries}")
@@ -1375,6 +1373,9 @@ async def search_documents(
                 max_distance=d,
                 dedupe=False,
                 agent=agent,
+                mode=retrieval_mode,
+                authorization_user=user,
+                original_query = defiltered_query
             )
             # Attach associated query to each search result
             for item in results:
@@ -1490,87 +1491,121 @@ async def execute_search(
     max_distance: Optional[Union[float, None]] = None,
     dedupe: Optional[bool] = True,
     agent: Optional[Agent] = None,
+    mode: Optional[RetrievalMode] = None,
+    authorization_user: Optional[KhojUser] = None,
+    original_query: Optional[str] = None,
 ):
-    # Run validation checks
-    results: List[SearchResponse] = []
-
-    start_time = time.time()
-
-    # Ensure the agent, if present, is accessible by the user
-    if user and agent and not await AgentAdapters.ais_agent_accessible(agent, user):
-        logger.error(f"Agent {agent.slug} is not accessible by user {user}")
-        return results
-
-    if q is None or q == "":
-        logger.warning("No query param (q) passed in API call to initiate search")
-        return results
-
-    # initialize variables
+    results_count = 5 if n is None else n
+    if isinstance(results_count, bool) or not isinstance(results_count, int) or not 1 <= results_count <= 1000:
+        raise ValueError("n must be an integer between 1 and 1000")
+    selected_mode = resolve_retrieval_mode(mode)
+    started = time.perf_counter()
+    principal = authorization_user if authorization_user is not None else user
+    if agent and not await AgentAdapters.ais_agent_accessible(agent, principal):
+        logger.warning("Search denied: Agent is not accessible")
+        return []
+    if not q or not q.strip():
+        return []
+    t = t or SearchType.All
+    if t.value not in text_search.search_type_to_embeddings_type:
+        return []
     user_query = q.strip()
-    results_count = n or 5
-    t = t or state.SearchType.All
-    search_tasks = []
+    query_text = retrieval_query_text(user_query)
+    search_model = await sync_to_async(get_default_search_model)()
+    # SearchResponse.score requires a real cosine distance in every mode.
+    # If query inference is unavailable, no backend can satisfy that contract.
+    try:
+        embedding = await sync_to_async(state.embeddings_model[search_model.name].embed_query)(query_text)
+    except (KeyError, RuntimeError, requests.RequestException) as error:
+        raise hybrid_search.RetrievalUnavailable(
+            "Query embedding unavailable; cannot provide cosine distances"
+        ) from error
 
-    # return cached results, if available
-    if user:
-        query_cache_key = f"{user_query}-{n}-{t}-{r}-{max_distance}-{dedupe}"
-        if query_cache_key in state.query_cache[user.uuid]:
-            logger.debug("Return response from query cache")
-            return state.query_cache[user.uuid][query_cache_key]
-
-    # Encode query with filter terms removed
-    defiltered_query = user_query
-    for filter in [DateFilter(), WordFilter(), FileFilter()]:
-        defiltered_query = filter.defilter(defiltered_query)
-
-    encoded_asymmetric_query = None
-    if t.value != SearchType.Image.value:
-        with timer("Encoding query took", logger=logger):
-            search_model = await sync_to_async(get_default_search_model)()
-            encoded_asymmetric_query = state.embeddings_model[search_model.name].embed_query(defiltered_query)
-
-    # Use asyncio to run searches in parallel
-    if t.value in [
-        SearchType.All.value,
-        SearchType.Org.value,
-        SearchType.Markdown.value,
-        SearchType.Github.value,
-        SearchType.Notion.value,
-        SearchType.Plaintext.value,
-        SearchType.Pdf.value,
-    ]:
-        # query markdown notes
-        search_tasks.append(
-            text_search.query(
+    # Retrieval result caching is deliberately disabled. The old cache lacks
+    # document/Agent scope revisions and can survive ACL or content changes.
+    if selected_mode == RetrievalMode.VECTOR:
+        dense_started = time.perf_counter()
+        rows = await text_search.query(
+            user_query,
+            user,
+            t,
+            question_embedding=embedding,
+            max_distance=max_distance,
+            agent=agent,
+            top_k=max(10, results_count),
+        )
+        logger.info(
+            "Retrieval mode=vector dense_ms=%.2f dense_count=%d",
+            (time.perf_counter() - dense_started) * 1000,
+            len(rows),
+        )
+        results = list(text_search.collate_results(rows, dedupe=dedupe))
+        results = await sync_to_async(text_search.rerank_and_sort_results)(
+            results,
+            query=query_text,
+            rank_results=r,
+            search_model_name=search_model.name,
+        )
+    else:
+        options = HybridOptions()
+        if selected_mode == RetrievalMode.HYBRID:
+            hits = await hybrid_search.query(
                 user_query,
                 user,
                 t,
-                question_embedding=encoded_asymmetric_query,
+                question_embedding=embedding,
                 max_distance=max_distance,
                 agent=agent,
+                options=options,
+                authorization_user=principal,
+                original_query = original_query
             )
+        else:
+            bm25_started = time.perf_counter()
+            try:
+                hits = await sync_to_async(EntryAdapters.search_with_bm25)(
+                    raw_query=user_query,
+                    user=user,
+                    max_results=options.bm25_top_k,
+                    file_type_filter=text_search.search_type_to_embeddings_type[t.value],
+                    agent=agent,
+                    authorization_user=principal,
+                    original_query = original_query
+                )
+            except DatabaseError as error:
+                raise hybrid_search.RetrievalUnavailable("BM25 backend unavailable") from error
+            logger.info(
+                "Retrieval mode=bm25 bm25_ms=%.2f bm25_count=%d", (time.perf_counter() - bm25_started) * 1000, len(hits)
+            )
+        rows = await sync_to_async(text_search.hydrate_retrieval_hits)(hits, user_query, user, t, embedding, agent)
+        results = text_search.collate_retrieval_hits(hits, rows)
+        results = await sync_to_async(text_search.rerank_and_sort_results)(
+            results,
+            query=query_text,
+            rank_results=r,
+            search_model_name=search_model.name,
+            mode=selected_mode,
         )
-
-    # Query across each requested content types in parallel
-    with timer("Query took", logger):
-        if search_tasks:
-            hits_list = await asyncio.gather(*search_tasks)
-            for hits in hits_list:
-                # Collate results
-                results += text_search.collate_results(hits, dedupe=dedupe)
-
-                # Sort results across all content types and take top results
-                results = text_search.rerank_and_sort_results(
-                    results, query=defiltered_query, rank_results=r, search_model_name=search_model.name
-                )[:results_count]
-
-    # Cache results
-    if user:
-        state.query_cache[user.uuid][query_cache_key] = results
-
-    end_time = time.time()
-    logger.debug(f"🔍 Search took: {end_time - start_time:.3f} seconds")
-
+        if dedupe:
+            # Choose the best chunk only after all fused chunks were reranked.
+            seen_hashes, seen_corpora = set(), set()
+            unique = []
+            by_id = {row.pk: row for row in rows}
+            for result in results:
+                row = by_id[result.additional["entry_id"]]
+                if row.hashed_value in seen_hashes or row.corpus_id in seen_corpora:
+                    continue
+                seen_hashes.add(row.hashed_value)
+                seen_corpora.add(row.corpus_id)
+                unique.append(result)
+            results = unique
+    results = results[:results_count]
+    logger.info(
+        "Search requested_mode=%s total_ms=%.2f final_count=%d",
+        selected_mode.value,
+        (time.perf_counter() - started) * 1000,
+        len(results),
+    )
     return results
 
 
@@ -1592,7 +1627,7 @@ def send_message_to_model(
     api_key = chat_model.ai_model_api.api_key
     api_base_url = chat_model.ai_model_api.api_base_url
 
-    if model_type == ChatModel.ModelType.OPENAI:
+    if model_type in (ChatModel.ModelType.OPENAI, ChatModel.ModelType.DEEPSEEK):
         return openai_send_message_to_model(
             messages=truncated_messages,
             api_key=api_key,
@@ -1603,6 +1638,7 @@ def send_message_to_model(
             deepthought=deepthought,
             api_base_url=api_base_url,
             tracer=tracer,
+            provider_type=chat_model.model_type,
         )
     elif model_type == ChatModel.ModelType.ANTHROPIC:
         return anthropic_send_message_to_model(
@@ -1763,7 +1799,7 @@ def send_message_to_model_wrapper_sync(
         vision_enabled=vision_available,
     )
 
-    if model_type == ChatModel.ModelType.OPENAI:
+    if model_type in (ChatModel.ModelType.OPENAI, ChatModel.ModelType.DEEPSEEK):
         return openai_send_message_to_model(
             messages=truncated_messages,
             api_key=api_key,
@@ -1772,6 +1808,7 @@ def send_message_to_model_wrapper_sync(
             response_type=response_type,
             response_schema=response_schema,
             tracer=tracer,
+            provider_type=chat_model.model_type,
         )
 
     elif model_type == ChatModel.ModelType.ANTHROPIC:
@@ -1970,7 +2007,7 @@ async def agenerate_chat_response(
             vision_available=vision_available,
         )
 
-        if chat_model.model_type == ChatModel.ModelType.OPENAI:
+        if chat_model.model_type in (ChatModel.ModelType.OPENAI, ChatModel.ModelType.DEEPSEEK):
             openai_chat_config = chat_model.ai_model_api
             api_key = openai_chat_config.api_key
             chat_model_name = chat_model.name
@@ -1983,6 +2020,7 @@ async def agenerate_chat_response(
                 api_base_url=openai_chat_config.api_base_url,
                 deepthought=deepthought,
                 tracer=tracer,
+                provider_type=chat_model.model_type,
             )
 
         elif chat_model.model_type == ChatModel.ModelType.ANTHROPIC:

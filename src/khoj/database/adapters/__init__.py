@@ -25,7 +25,7 @@ from apscheduler.job import Job
 from asgiref.sync import sync_to_async
 from django.contrib.sessions.backends.db import SessionStore
 from django.db import transaction
-from django.db.models import Prefetch, Q
+from django.db.models import Prefetch, Q, QuerySet
 from django.db.models.manager import BaseManager
 from django.db.utils import IntegrityError
 from django.utils import timezone as django_timezone
@@ -35,6 +35,7 @@ from fastapi import HTTPException
 from pgvector.django import CosineDistance
 from torch import Tensor
 
+from khoj.database.lexical_search import ranked_bm25_entries
 from khoj.database.models import (
     Agent,
     AiModelApi,
@@ -73,6 +74,7 @@ from khoj.processor.conversation import prompts
 from khoj.search_filter.date_filter import DateFilter
 from khoj.search_filter.file_filter import FileFilter
 from khoj.search_filter.word_filter import WordFilter
+from khoj.search_type.retrieval_types import RetrievalHit
 from khoj.utils import state
 from khoj.utils.helpers import (
     clean_object_for_db,
@@ -757,8 +759,9 @@ class AgentAdapters:
         return await sync_to_async(list)(agents)
 
     @staticmethod
-    async def ais_agent_accessible(agent: Agent, user: KhojUser) -> bool:
-        agent = await Agent.objects.select_related("creator").aget(pk=agent.pk)
+    def is_agent_accessible(agent: Agent, user: Optional[KhojUser]) -> bool:
+        """Check current stored visibility, shared by synchronous/async callers."""
+        agent = Agent.objects.select_related("creator").get(pk=agent.pk)
 
         if agent.privacy_level == Agent.PrivacyLevel.PUBLIC:
             return True
@@ -767,6 +770,10 @@ class AgentAdapters:
         if agent.privacy_level == Agent.PrivacyLevel.PROTECTED:
             return True
         return False
+
+    @staticmethod
+    async def ais_agent_accessible(agent: Agent, user: KhojUser) -> bool:
+        return await sync_to_async(AgentAdapters.is_agent_accessible)(agent, user)
 
     @staticmethod
     async def aget_conversation_agent_by_id(agent_id: int):
@@ -1738,11 +1745,12 @@ class ConversationAdapters:
         if chat_model is None:
             chat_model = await ConversationAdapters.aget_default_chat_model()
 
-        if (
+        if chat_model and (
             chat_model.model_type
             in [
                 ChatModel.ModelType.ANTHROPIC,
                 ChatModel.ModelType.OPENAI,
+                ChatModel.ModelType.DEEPSEEK,
                 ChatModel.ModelType.GOOGLE,
             ]
         ) and chat_model.ai_model_api:
@@ -2087,7 +2095,17 @@ class EntryAdapters:
         return total_size / 1024 / 1024
 
     @staticmethod
-    def apply_filters(user: KhojUser, query: str, file_type_filter: str = None, agent: Agent = None):
+    def apply_filters(
+        user: Optional[KhojUser],
+        query: str,
+        file_type_filter: Optional[str] = None,
+        agent: Optional[Agent] = None,
+    ) -> QuerySet[Entry]:
+        """Scope to the user and/or a previously authorized agent, then filter.
+
+        Agent access is checked by callers such as execute_search; no scope
+        grants no access. All retrieval backends should share this queryset.
+        """
         q_filter_terms = Q()
 
         word_filters = EntryAdapters.word_filter.get_filter_terms(query)
@@ -2103,9 +2121,6 @@ class EntryAdapters:
 
         if owner_filter == Q():
             return Entry.objects.none()
-
-        if len(word_filters) == 0 and len(file_filters) == 0 and len(date_filters) == 0:
-            return Entry.objects.filter(owner_filter)
 
         for term in word_filters:
             if term.startswith("+"):
@@ -2144,36 +2159,70 @@ class EntryAdapters:
         relevant_entries = Entry.objects.filter(owner_filter).filter(q_filter_terms)
         if file_type_filter:
             relevant_entries = relevant_entries.filter(file_type=file_type_filter)
+        if date_filters:
+            # Multiple matching dates must not consume multiple candidate slots.
+            relevant_entries = relevant_entries.distinct()
         return relevant_entries
+
+    @staticmethod
+    def search_with_bm25(
+        raw_query: str,
+        user: Optional[KhojUser],
+        max_results: int = 40,
+        file_type_filter: Optional[str] = None,
+        agent: Optional[Agent] = None,
+        file_source_filter: Optional[str] = None,
+        authorization_user: Optional[KhojUser] = None,
+        original_query : Optional[str] = None,
+    ) -> List[RetrievalHit]:
+        """Return independent BM25 candidates, using Entry PKs and 1-based ranks.
+
+        Share Dense's filters and Agent access policy. authorization_user keeps
+        the authenticated principal when user=None restricts scope to Agent
+        documents; it never broadens the apply_filters document scope. Empty lexical text or
+        zero limit returns no hits; invalid limits raise ValueError. Database
+        failures propagate, including absent pg_search/indexes. Async callers
+        must use sync_to_async because this method evaluates its queryset.
+        """
+        if isinstance(max_results, bool) or not isinstance(max_results, int) or max_results < 0:
+            raise ValueError("max_results must be a non-negative integer")
+        if not isinstance(raw_query, str):
+            raise ValueError("raw_query must be a string")
+        # DateFilter.defilter expects whitespace before a date expression.
+        query = " " + raw_query + " " + (original_query or "")
+        # FileFilter.defilter does not consume excluded-file syntax. Remove it
+        # first locally, leaving the legacy Dense parsing behavior unchanged.
+        query = re.sub(EntryAdapters.file_filter.excluded_file_filter_regex, "", query)
+        for query_filter in (EntryAdapters.date_filter, EntryAdapters.word_filter, EntryAdapters.file_filter):
+            query = query_filter.defilter(query)
+        if not query.strip() or max_results == 0 or (user is None and agent is None):
+            return []
+        principal = authorization_user if authorization_user is not None else user
+        if agent is not None and not AgentAdapters.is_agent_accessible(agent, principal):
+            raise PermissionError("Agent is not accessible by this user")
+        entries = EntryAdapters.apply_filters(user, raw_query + original_query, file_type_filter, agent)
+        if file_source_filter is not None:
+            entries = entries.filter(file_source=file_source_filter)
+        rows = ranked_bm25_entries(entries, query.strip(), max_results).values_list("pk", "bm25_score")
+        return [
+            RetrievalHit(entry_id=pk, bm25_rank=rank, bm25_score=float(score))
+            for rank, (pk, score) in enumerate(rows, start=1)
+        ]
 
     @staticmethod
     def search_with_embeddings(
         raw_query: str,
         embeddings: Tensor,
-        user: KhojUser,
+        user: Optional[KhojUser],
         max_results: int = 10,
-        file_type_filter: str = None,
+        file_type_filter: Optional[str] = None,
         max_distance: float = math.inf,
-        agent: Agent = None,
-    ):
-        owner_filter = Q()
-
-        if user is not None:
-            owner_filter = Q(user=user)
-        if agent is not None:
-            owner_filter |= Q(agent=agent)
-
-        if owner_filter == Q():
-            return Entry.objects.none()
-
+        agent: Optional[Agent] = None,
+    ) -> QuerySet[Entry]:
         relevant_entries = EntryAdapters.apply_filters(user, raw_query, file_type_filter, agent)
-        relevant_entries = relevant_entries.filter(owner_filter).annotate(
-            distance=CosineDistance("embeddings", embeddings)
-        )
+        relevant_entries = relevant_entries.annotate(distance=CosineDistance("embeddings", embeddings))
         relevant_entries = relevant_entries.filter(distance__lte=max_distance)
 
-        if file_type_filter:
-            relevant_entries = relevant_entries.filter(file_type=file_type_filter)
         relevant_entries = relevant_entries.order_by("distance")
         return relevant_entries[:max_results]
 

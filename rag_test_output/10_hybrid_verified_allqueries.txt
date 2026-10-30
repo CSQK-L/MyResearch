@@ -1,0 +1,15 @@
+Overall Accuracy: 97.50% on frames_ir.
+
+Accuracy by Reasoning Type:
+reasoning_type
+Multiple constraints                                               0.9375
+Multiple constraints | Temporal reasoning                          1.0000
+Numerical reasoning | Multiple constraints | Temporal reasoning    1.0000
+Numerical reasoning | Tabular reasoning                            1.0000
+Tabular reasoning | Multiple constraints                           1.0000
+Temporal reasoning                                                 1.0000
+Name: evaluation_decision, dtype: float64
+
+Total Cost: $0.00000 to evaluate 10 results.
+
+Sampling Type: 10 samples. Randomized.

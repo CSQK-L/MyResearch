@@ -3,23 +3,158 @@ import os
 from typing import Tuple
 
 import openai
+from django.core.exceptions import ValidationError
+from django.core.validators import URLValidator
+from django.db import connection, transaction
 
 from khoj.database.adapters import ConversationAdapters
 from khoj.database.models import (
     AiModelApi,
     ChatModel,
     KhojUser,
+    PriceTier,
     SpeechToTextModelOptions,
     TextToImageModelConfig,
 )
 from khoj.processor.conversation.utils import model_to_prompt_size, model_to_tokenizer
 from khoj.utils.constants import (
     default_anthropic_chat_models,
+    default_deepseek_chat_models,
     default_gemini_chat_models,
     default_openai_chat_models,
 )
 
 logger = logging.getLogger(__name__)
+
+
+class DeepSeekConfigurationError(ValueError):
+    """Permanent configuration error; retrying startup cannot resolve it."""
+
+
+@transaction.atomic
+def _register_deepseek_provider(
+    api_key: str, api_base_url: str, chat_models: list[str], provider_name: str
+) -> AiModelApi:
+    """Register without changing existing credentials, model settings or selections."""
+    if not api_key or not api_key.strip():
+        raise DeepSeekConfigurationError("DEEPSEEK_API_KEY is required.")
+    try:
+        URLValidator(schemes=["https", "http"])(api_base_url)
+    except ValidationError:
+        raise DeepSeekConfigurationError("DEEPSEEK_BASE_URL must be a valid HTTP(S) URL.") from None
+
+    # AiModelApi.name has no unique constraint. Serialize registrations, including
+    # the first insert, so simultaneous command invocations cannot create duplicates.
+    if connection.vendor == "postgresql":
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT pg_advisory_xact_lock(%s)", [0x444545505345454B])
+
+    configs = list(AiModelApi.objects.filter(name=provider_name))
+    if len(configs) > 1:
+        raise DeepSeekConfigurationError(
+            "Multiple DeepSeek API configurations share this name. Resolve the conflict in admin."
+        )
+    if configs:
+        api = configs[0]
+        if api.api_key != api_key or api.api_base_url != api_base_url:
+            raise DeepSeekConfigurationError(
+                "DeepSeek API configuration conflicts with environment credentials or base URL."
+            )
+        if ChatModel.objects.filter(ai_model_api=api).exclude(model_type=ChatModel.ModelType.DEEPSEEK).exists():
+            raise DeepSeekConfigurationError("DeepSeek API configuration is already used by another provider type.")
+    else:
+        api = AiModelApi.objects.create(name=provider_name, api_key=api_key, api_base_url=api_base_url)
+
+    for name in chat_models:
+        existing = list(ChatModel.objects.filter(name=name, model_type=ChatModel.ModelType.DEEPSEEK))
+        if existing:
+            if (
+                len(existing) != 1
+                or existing[0].ai_model_api_id != api.pk
+                or existing[0].vision_enabled
+                or existing[0].price_tier != PriceTier.STANDARD
+            ):
+                raise DeepSeekConfigurationError(
+                    "Existing DeepSeek model configuration conflicts with registration. Resolve it in admin."
+                )
+            continue
+        ChatModel.objects.create(
+            name=name,
+            friendly_name=name,
+            model_type=ChatModel.ModelType.DEEPSEEK,
+            ai_model_api=api,
+            price_tier=PriceTier.STANDARD,
+            vision_enabled=False,
+            max_prompt_size=model_to_prompt_size.get(name, 60000),
+            tokenizer=model_to_tokenizer.get(name),
+        )
+    return api
+
+
+def _setup_chat_model_provider(
+    model_type: ChatModel.ModelType,
+    default_chat_models: list,
+    default_api_key: str,
+    interactive: bool,
+    api_base_url: str = None,
+    vision_enabled: bool = False,
+    provider_name: str = None,
+) -> Tuple[bool, AiModelApi]:
+    supported_vision_models = default_openai_chat_models + default_anthropic_chat_models + default_gemini_chat_models
+    provider_name = provider_name or model_type.name.capitalize()
+
+    default_use_model = (
+        bool(default_api_key) if model_type == ChatModel.ModelType.DEEPSEEK else default_api_key is not None
+    )
+
+    use_model_provider = (
+        default_use_model if not interactive else input(f"Add {provider_name} chat models? (y/n): ") == "y"
+    )
+
+    if not use_model_provider:
+        return False, None
+
+    logger.info(f"️💬 Setting up your {provider_name} chat configuration")
+
+    ai_model_api = None
+    if interactive:
+        user_api_key = input(f"Enter your {provider_name} API key (leave blank to use configured key): ")
+        api_key = user_api_key if user_api_key != "" else default_api_key
+    else:
+        api_key = default_api_key
+
+    if interactive:
+        user_chat_models = input(
+            f"Enter the {provider_name} chat models you want to use (default: {','.join(default_chat_models)}): "
+        )
+        chat_models = user_chat_models.split(",") if user_chat_models != "" else default_chat_models
+        chat_models = [model.strip() for model in chat_models]
+    else:
+        chat_models = default_chat_models
+
+    if model_type == ChatModel.ModelType.DEEPSEEK:
+        return True, _register_deepseek_provider(api_key, api_base_url, chat_models, provider_name)
+
+    ai_model_api = AiModelApi.objects.create(api_key=api_key, name=provider_name, api_base_url=api_base_url)
+    for chat_model in chat_models:
+        default_max_tokens = model_to_prompt_size.get(chat_model)
+        default_tokenizer = model_to_tokenizer.get(chat_model)
+        model_vision_enabled = vision_enabled and chat_model in supported_vision_models
+
+        chat_model_options = {
+            "name": chat_model,
+            "friendly_name": chat_model,
+            "model_type": model_type,
+            "max_prompt_size": default_max_tokens,
+            "vision_enabled": model_vision_enabled,
+            "tokenizer": default_tokenizer,
+            "ai_model_api": ai_model_api,
+        }
+
+        ChatModel.objects.create(**chat_model_options)
+
+    logger.info(f"🗣️ {provider_name} chat model configuration complete")
+    return True, ai_model_api
 
 
 def initialization(interactive: bool = True):
@@ -37,6 +172,7 @@ def initialization(interactive: bool = True):
         admin_user = KhojUser.objects.create_superuser(email=email_addr, username=email_addr, password=password)
         logger.info(f"👩‍✈️ Created admin user: {admin_user.email}")
 
+    @transaction.atomic
     def _create_chat_configuration():
         logger.info(
             "🗣️ Configure chat models available to your server. You can always update these at /server/admin using your admin account"
@@ -143,69 +279,17 @@ def initialization(interactive: bool = True):
             interactive=interactive,
         )
 
+        _setup_chat_model_provider(
+            ChatModel.ModelType.DEEPSEEK,
+            default_deepseek_chat_models,
+            default_api_key=os.getenv("DEEPSEEK_API_KEY"),
+            api_base_url=os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com"),
+            vision_enabled=False,
+            interactive=interactive,
+            provider_name="DeepSeek",
+        )
+
         logger.info("🗣️ Chat model configuration complete")
-
-    def _setup_chat_model_provider(
-        model_type: ChatModel.ModelType,
-        default_chat_models: list,
-        default_api_key: str,
-        interactive: bool,
-        api_base_url: str = None,
-        vision_enabled: bool = False,
-        provider_name: str = None,
-    ) -> Tuple[bool, AiModelApi]:
-        supported_vision_models = (
-            default_openai_chat_models + default_anthropic_chat_models + default_gemini_chat_models
-        )
-        provider_name = provider_name or model_type.name.capitalize()
-
-        default_use_model = default_api_key is not None
-
-        use_model_provider = (
-            default_use_model if not interactive else input(f"Add {provider_name} chat models? (y/n): ") == "y"
-        )
-
-        if not use_model_provider:
-            return False, None
-
-        logger.info(f"️💬 Setting up your {provider_name} chat configuration")
-
-        ai_model_api = None
-        if interactive:
-            user_api_key = input(f"Enter your {provider_name} API key (default: {default_api_key}): ")
-            api_key = user_api_key if user_api_key != "" else default_api_key
-        else:
-            api_key = default_api_key
-        ai_model_api = AiModelApi.objects.create(api_key=api_key, name=provider_name, api_base_url=api_base_url)
-
-        if interactive:
-            user_chat_models = input(
-                f"Enter the {provider_name} chat models you want to use (default: {','.join(default_chat_models)}): "
-            )
-            chat_models = user_chat_models.split(",") if user_chat_models != "" else default_chat_models
-            chat_models = [model.strip() for model in chat_models]
-        else:
-            chat_models = default_chat_models
-
-        for chat_model in chat_models:
-            default_max_tokens = model_to_prompt_size.get(chat_model)
-            default_tokenizer = model_to_tokenizer.get(chat_model)
-            vision_enabled = vision_enabled and chat_model in supported_vision_models
-
-            chat_model_options = {
-                "name": chat_model,
-                "friendly_name": chat_model,
-                "model_type": model_type,
-                "max_prompt_size": default_max_tokens,
-                "vision_enabled": vision_enabled,
-                "tokenizer": default_tokenizer,
-                "ai_model_api": ai_model_api,
-            }
-
-            ChatModel.objects.create(**chat_model_options)
-
-        logger.info(f"🗣️ {provider_name} chat model configuration complete")
-        return True, ai_model_api
 
     def _update_chat_model_options():
         """Update available chat models for OpenAI-compatible APIs"""
@@ -271,6 +355,10 @@ def initialization(interactive: bool = True):
             # The admin can still configure their settings from the admin page.
             except EOFError:
                 return
+            except DeepSeekConfigurationError:
+                # Invalid credentials/configuration require operator intervention.
+                # The configuration transaction has rolled back all provider writes.
+                raise
             except Exception as e:
                 logger.error(f"🚨 Failed to create chat configuration: {e}", exc_info=True)
     else:

@@ -1,0 +1,24 @@
+
+# 1. 继承 Khoj 当前使用的 PostgreSQL 15 + pgvector 镜像
+FROM pgvector/pgvector:pg15
+
+# 2. 固定 ParadeDB pg_search 版本
+ARG PG_SEARCH_VERSION=0.26.3
+
+# 3. 安装适用于 PostgreSQL 15 / Debian 12 / amd64 的扩展
+RUN set -eux; \
+    . /etc/os-release; \
+    test "$VERSION_CODENAME" = "bookworm"; \
+    test "$(dpkg --print-architecture)" = "amd64"; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends \
+        ca-certificates \
+        curl; \
+    curl -fL --retry 3 \
+        "https://github.com/paradedb/paradedb/releases/download/v${PG_SEARCH_VERSION}/postgresql-15-pg-search_${PG_SEARCH_VERSION}-1PARADEDB-bookworm_amd64.deb" \
+        -o /tmp/pg_search.deb; \
+    apt-get install -y --no-install-recommends \
+        /tmp/pg_search.deb; \
+    test -f /usr/share/postgresql/15/extension/pg_search.control; \
+    rm -f /tmp/pg_search.deb; \
+    rm -rf /var/lib/apt/lists/*

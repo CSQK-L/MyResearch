@@ -72,7 +72,7 @@ class TextToEntries(ABC):
             text_splitter = RecursiveCharacterTextSplitter(
                 chunk_size=max_tokens,
                 separators=["\n\n", "\n", "!", "?", ".", " ", "\t", ""],
-                keep_separator=True,
+                keep_separator=True,        # 切分时保留分隔符
                 length_function=lambda chunk: len(TextToEntries.tokenizer(chunk)),
                 chunk_overlap=0,
             )

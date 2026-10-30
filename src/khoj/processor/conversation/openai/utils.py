@@ -101,7 +101,9 @@ def completion_with_backoff(
     deepthought: bool = False,
     model_kwargs: dict = {},
     tracer: dict = {},
+    provider_type: str = "openai",
 ) -> ResponseWithThought:
+    model_kwargs = deepcopy(model_kwargs)
     client_key = f"{openai_api_key}--{api_base_url}"
     client = openai_clients.get(client_key)
     if not client:
@@ -120,7 +122,10 @@ def completion_with_backoff(
     formatted_messages = format_message_for_api(messages, model_name, api_base_url)
 
     # Tune reasoning models arguments
-    if is_openai_reasoning_model(model_name, api_base_url):
+    if provider_type == "deepseek":
+        model_kwargs["max_tokens"] = model_kwargs.pop("max_completion_tokens")
+        model_kwargs["extra_body"] = {**model_kwargs.get("extra_body", {}), "thinking": {"type": "disabled"}}
+    elif is_openai_reasoning_model(model_name, api_base_url):
         model_kwargs["temperature"] = 1
         reasoning_effort = "medium" if deepthought else "low"
         model_kwargs["reasoning_effort"] = reasoning_effort
@@ -292,6 +297,7 @@ async def chat_completion_with_backoff(
     api_base_url=None,
     deepthought=False,
     tracer: dict = {},
+    provider_type: str = "openai",
 ) -> AsyncGenerator[ResponseWithThought, None]:
     client_key = f"{openai_api_key}--{api_base_url}"
     client = openai_async_clients.get(client_key)
@@ -313,7 +319,10 @@ async def chat_completion_with_backoff(
     formatted_messages = format_message_for_api(messages, model_name, api_base_url)
 
     # Configure thinking for openai reasoning models
-    if is_openai_reasoning_model(model_name, api_base_url):
+    if provider_type == "deepseek":
+        model_kwargs["max_tokens"] = model_kwargs.pop("max_completion_tokens")
+        model_kwargs["extra_body"] = {**model_kwargs.get("extra_body", {}), "thinking": {"type": "disabled"}}
+    elif is_openai_reasoning_model(model_name, api_base_url):
         temperature = 1
         reasoning_effort = "medium" if deepthought else "low"
         model_kwargs["reasoning_effort"] = reasoning_effort
@@ -723,9 +732,24 @@ async def responses_chat_completion_with_backoff(
         commit_conversation_trace(messages, trace_payload, tracer)
 
 
-def get_structured_output_support(model_name: str, api_base_url: str = None) -> StructuredOutputSupport:
+def is_deepseek_api(api_base_url: str | None = None) -> bool:
+    """Recognize only DeepSeek's official host, including legacy OpenAI configurations."""
+    return bool(api_base_url) and urlparse(api_base_url).hostname == "api.deepseek.com"
+
+
+def get_structured_output_support(
+    model_name: str,
+    api_base_url: str = None,
+    provider_type: str | None = None,
+    *,
+    use_responses_api: bool = False,
+) -> StructuredOutputSupport:
+    """Select output capabilities for the actual endpoint, not just the model name."""
     if model_name.startswith("deepseek-reasoner"):
         return StructuredOutputSupport.NONE
+    # This rule describes Chat Completions only; it makes no claim about Responses.
+    if not use_responses_api and (provider_type == "deepseek" or is_deepseek_api(api_base_url)):
+        return StructuredOutputSupport.OBJECT
     if api_base_url:
         host = urlparse(api_base_url).hostname
         if host and host.endswith(".ai.azure.com"):
